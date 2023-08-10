@@ -11,8 +11,8 @@ services:
   api:
     image: phpnexus01.dc02.int.c24b.de:8482/c24-php/php-nginx
     labels:
-      - "c24.subdomains=api"
-      - "traefik.http.routers.api-https.tls=true"
+      - "c24.subdomains=udemy"
+      - "traefik.http.routers.udemy-https.tls=true"
     volumes:
       - ./:/var/www/app/
     ports:
