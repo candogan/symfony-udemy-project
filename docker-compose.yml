@@ -1,0 +1,49 @@
+version: "3.9"
+
+networks:
+  c24:
+    external: true
+
+volumes:
+  percona_symfony_project_data:
+
+services:
+  api:
+    image: phpnexus01.dc02.int.c24b.de:8482/c24-php/php-nginx
+    labels:
+      - "c24.subdomains=api"
+      - "traefik.http.routers.api-https.tls=true"
+    volumes:
+      - ./:/var/www/app/
+    ports:
+      - '95:80'
+    restart: always
+    networks:
+      - default
+      - c24
+
+  workspace:
+    image: phpnexus01.dc02.int.c24b.de:8482/c24-php/php-cli
+    tty: true
+    volumes:
+      - ../:/var/www/app
+    restart: unless-stopped
+
+  database:
+    image: percona
+    command: [
+      "--sql_mode=STRICT_ALL_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
+      "--character-set-server=utf8mb4",
+      "--collation-server=utf8mb4_unicode_ci",
+      "--innodb-flush-log-at-trx-commit=0",
+      "--max-allowed-packet=64MB"
+    ]
+    volumes:
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+      - percona_symfony_project_data:/var/lib/mysql
+    environment:
+      - TZ=Europe/Berlin
+      - MYSQL_ALLOW_EMPTY_PASSWORD=1
+    ports:
+      - '3308:3306'
+    restart: always
