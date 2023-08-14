@@ -28,22 +28,29 @@ services:
     volumes:
       - ../:/var/www/app
     restart: unless-stopped
+    networks:
+      - default
+      - c24
 
   database:
-    image: percona
+    container_name: mysqldb
+    image: mysql
     command: [
-      "--sql_mode=STRICT_ALL_TABLES,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION",
       "--character-set-server=utf8mb4",
       "--collation-server=utf8mb4_unicode_ci",
       "--innodb-flush-log-at-trx-commit=0",
       "--max-allowed-packet=64MB"
     ]
     volumes:
-      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
       - percona_symfony_project_data:/var/lib/mysql
     environment:
       - TZ=Europe/Berlin
       - MYSQL_ALLOW_EMPTY_PASSWORD=1
+      - MYSQL_DATABASE=udemy
+      - MYSQL_USER=udemy
     ports:
       - '3308:3306'
     restart: always
+    networks:
+      - default
+      - c24

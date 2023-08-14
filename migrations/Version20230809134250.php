@@ -14,16 +14,16 @@ final class Version20230809134250 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Initial migration for bank-bamboo project';
+        return 'Initial migration for symfony-udemy project';
     }
 
     public function up(Schema $schema): void
     {
         $this->addSql(
             <<<SQL
-CREATE DATABASE IF NOT EXISTS bamboo;
-CREATE USER IF NOT EXISTS bamboo;
-GRANT ALL PRIVILEGES ON *.* TO 'bamboo'@'%' IDENTIFIED BY 'localsecretpassword';
+CREATE DATABASE IF NOT EXISTS udemy;
+CREATE USER IF NOT EXISTS udemy;
+GRANT ALL PRIVILEGES ON *.* TO 'udemy'@'%' IDENTIFIED BY 'localsecretpassword';
 FLUSH PRIVILEGES;
 SQL
         );
@@ -33,8 +33,8 @@ SQL
     {
         $this->addSql(
             <<<SQL
-DROP DATABASE IF EXISTS bamboo;
-DROP USER bamboo;
+DROP DATABASE IF EXISTS udemy;
+DROP USER udemy;
 SQL
         );
     }
