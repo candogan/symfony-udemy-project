@@ -6,7 +6,6 @@ namespace App\Controller;
 use App\Entity\BlogPost;
 use App\Repository\BlogPostRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use http\Env\Response;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
