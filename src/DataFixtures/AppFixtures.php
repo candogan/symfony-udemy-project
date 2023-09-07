@@ -15,6 +15,51 @@ class AppFixtures extends Fixture
 {
     private Generator $fakerGenerator;
 
+    private const USERS = [
+        [
+            'username' => 'sadmin',
+            'email' => 'admin@blog.de',
+            'name' => 'Can Dogan',
+            'password' => 'Localsecretpassword123',
+            'roles' => [User::ROLE_SUPERADMIN]
+        ],
+        [
+            'username' => 'admin',
+            'email' => 'john_doe@blog.de',
+            'name' => 'John Doe',
+            'password' => 'Localsecretpassword123',
+            'roles' => [User::ROLE_ADMIN],
+        ],
+        [
+            'username' => 'writer1',
+            'email' => 'RobStark@blog.de',
+            'name' => 'Robb Stark',
+            'password' => 'Localsecretpassword123',
+            'roles' => [User::ROLE_WRITER],
+        ],
+        [
+            'username' => 'writer2',
+            'email' => 'TywinLennister@blog.de',
+            'name' => 'Tywin Lennister',
+            'password' => 'Localsecretpassword123',
+            'roles' => [User::ROLE_WRITER],
+        ],
+        [
+            'username' => 'editor',
+            'email' => 'EddardStark@blog.de',
+            'name' => 'Eddard Stark',
+            'password' => 'Localsecretpassword123',
+            'roles' => [User::ROLE_EDITOR],
+        ],
+        [
+            'username' => 'commentator',
+            'email' => 'JeimiLennister@blog.de',
+            'name' => 'Jeimi Lennister',
+            'password' => 'Localsecretpassword123',
+            'roles' => [User::ROLE_COMMENTATOR],
+        ],
+    ];
+
     public function __construct(
         private readonly UserPasswordHasherInterface $passwordHasher,
     )
@@ -32,15 +77,16 @@ class AppFixtures extends Fixture
 
     public function loadBlogPosts(ObjectManager $manager)
     {
-        /** @var User $user */
-        $user = $this->getReference('user_admin');
-
         for ($i = 0; $i < 100; $i++) {
             $blogPost = new BlogPost();
             $blogPost->setTitle($this->fakerGenerator->title);
             $blogPost->setPublished($this->fakerGenerator->dateTimeThisYear);
             $blogPost->setContent($this->fakerGenerator->text);
-            $blogPost->setAuthor($user);
+
+            /** @var User $authorReference */
+            $authorReference = $this->getRandomUserReference($blogPost);
+
+            $blogPost->setAuthor($authorReference);
             $blogPost->setSlug($this->fakerGenerator->slug);
             $this->setReference("blog_post_$i", $blogPost);
             $manager->persist($blogPost);
@@ -55,8 +101,12 @@ class AppFixtures extends Fixture
             for ($j = 0; $j < rand(1, 10); $j++) {
                 $comment = new Comment();
                 $comment->setContent($this->fakerGenerator->realText)
-                    ->setPublished($this->fakerGenerator->dateTimeThisYear)
-                    ->setAuthor($this->getReference('user_admin'))
+                    ->setPublished($this->fakerGenerator->dateTimeThisYear);
+
+                /** @var User $authorReference */
+                $authorReference = $this->getRandomUserReference($comment);
+
+                $comment->setAuthor($authorReference)
                     ->setBlogPost($this->getReference("blog_post_$i"));
 
                 $manager->persist($comment);
@@ -68,18 +118,44 @@ class AppFixtures extends Fixture
 
     public function loadUsers(ObjectManager $manager)
     {
-        $user = new User();
-        $user->setUsername('admin')
-            ->setEmail('admin@blog.com')
-            ->setName('Can Dogan')
-            ->setPassword($this->passwordHasher->hashPassword(
-                $user,
-                'localsecretpassword'
-            ));
+        foreach (self::USERS as $userfixture) {
+            $user = new User();
+            $user->setUsername($userfixture['username'])
+                ->setEmail($userfixture['email'])
+                ->setName($userfixture['name'])
+                ->setPassword($this->passwordHasher->hashPassword(
+                    $user,
+                    $userfixture['password']
+                ))
+                ->setRoles($userfixture['roles']);
 
-        $this->addReference('user_admin', $user);
+            $this->addReference('user_' . $userfixture['username'], $user);
 
-        $manager->persist($user);
+            $manager->persist($user);
+        }
+
         $manager->flush();
+    }
+
+    public function getRandomUserReference($entity): User
+    {
+        $random = self::USERS[rand(0, 5)];
+
+        if ($entity instanceof BlogPost && !count(array_intersect($random['roles'], [
+                User::ROLE_SUPERADMIN, User::ROLE_ADMIN, User::ROLE_WRITER
+            ]))) {
+            return $this->getRandomUserReference($entity);
+        }
+
+        if ($entity instanceof Comment && !count(array_intersect($random['roles'], [
+                User::ROLE_SUPERADMIN, User::ROLE_ADMIN, User::ROLE_WRITER, User::ROLE_COMMENTATOR
+            ]))) {
+            return $this->getRandomUserReference($entity);
+        }
+
+        /** @var User $user */
+        $user = $this->getReference('user_' . $random['username']);
+
+        return $user;
     }
 }

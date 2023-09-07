@@ -6,6 +6,8 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Put;
+use App\Controller\ResetPasswordAction;
 use App\Repository\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -13,72 +15,129 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Core\Validator\Constraints\UserPassword;
+use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ApiResource(
     operations: [
-        new Get(),
-        new Post(),
+        new Get(
+            security: "is_granted('IS_AUTHENTICATED_FULLY')",
+            normalizationContext: ['groups' => ['userget']]
+        ),
+        new Put(
+            security: "is_granted('IS_AUTHENTICATED_FULLY') and object == user"
+        ),
         new GetCollection(),
+        new Post(security: "is_granted('IS_AUTHENTICATED_FULLY')")
     ]
-    //normalizationContext: ['groups' => ['read']],
-    //denormalizationContext: ['groups' => ['write']]
+)]
+#[ApiResource(
+    security: "is_granted('IS_AUTHENTICATED_FULLY') and object == user",
+    controller: ResetPasswordAction::class,
+    uriTemplate: '/users/{id}/reset-password',
+    operations: [
+        new Put(
+            denormalizationContext: [
+                'groups' => ['put-reset-password']
+            ],
+        )
+    ],
 )]
 #[UniqueEntity(['username'])]
 #[UniqueEntity(['email'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    public const ROLE_COMMENTATOR = 'ROLE_COMMENTATOR';
+    public const ROLE_WRITER = 'ROLE_WRITER';
+    public const ROLE_EDITOR = 'ROLE_EDITOR';
+    public const ROLE_ADMIN = 'ROLE_ADMIN';
+    public const ROLE_SUPERADMIN = 'ROLE_SUPERADMIN';
+
+    public const DEFAULT_ROLES = [self::ROLE_COMMENTATOR];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    //#[Groups(['read', 'write'])]
+    #[Groups(['userget', "bpwithauthor"])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\NotBlank]
-    #[Assert\Length(min: 6, max: 255)]
-    //#[Groups(['read', 'write'])]
+    #[Assert\NotBlank(groups: ['post', 'put'])]
+    #[Assert\Length(min: 6, max: 255, groups: ['post'])]
+    #[Groups(['userget', 'post', "getCommentWithAuthor", "bpwithauthor"])]
     private ?string $username = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\NotBlank]
+    #[Assert\NotBlank(groups: ['post', 'put'])]
+    #[Assert\Regex(
+        pattern: "/(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).{7,}/",
+        message: "Password must be seven characters long and contain at least one digit, one upper case letter and one lower case letter",
+        groups: ['post']
+    )]
+    #[Groups(['userget', 'post'])]
+    private ?string $password = null;
+
+    #[Assert\NotBlank(groups: ['post', 'put'])]
+    #[Assert\Expression(
+        "this.getPassword() === this.getRetypedPassword()",
+        message: "Passwords do not match",
+        groups: ['post']
+    )]
+    private $retypedPassword;
+
+    #[Assert\NotBlank(groups: ['post', 'put'])]
     #[Assert\Regex(
         pattern: "/(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).{7,}/",
         message: "Password must be seven characters long and contain at least one digit, one upper case letter and one lower case letter"
     )]
-    private ?string $password = null;
+    #[Groups(['put-reset-password'])]
+    private $newPassword;
 
-//    #[Assert\NotBlank]
-//    #[Assert\Expression(
-//        "this.getPassword() === this.getRetypedPassword()",
-//        message: "Passwords do not match"
-//    )]
-//    private $retypedPassword;
+    #[Assert\NotBlank(groups: ['post', 'put'])]
+    #[Assert\Expression(
+        "this.getNewPassword() === this.getNewRetypedPassword()",
+        message: "Passwords do not match"
+    )]
+    #[Groups(['put-reset-password'])]
+    private $newRetypedPassword;
+
+    #[Groups(['put-reset-password'])]
+    #[UserPassword()]
+    private $oldPassword;
 
     #[ORM\Column(length: 255)]
-    #[Assert\NotBlank]
-    #[Assert\Length(min: 6, max: 255)]
-    //#[Groups(['read', 'write'])]
+    #[Assert\NotBlank(groups: ['post', 'put'])]
+    #[Assert\Length(min: 6, max: 255, groups: ['post', 'put'])]
+    #[Groups(['userget', 'post', 'put', "getCommentWithAuthor", "bpwithauthor"])]
     private ?string $name = null;
 
     #[ORM\Column(length: 255)]
-    #[Assert\NotBlank]
-    #[Assert\Length(min: 6, max: 255)]
+    #[Assert\NotBlank(groups: ['post', 'put'])]
+    #[Assert\Email(groups: ['post', 'put'])]
+    #[Assert\Length(min: 6, max: 255, groups: ['post', 'put'])]
+    #[Groups(['post', 'put', "getCommentWithAuthor", 'bpwithauthor', 'get-admin', 'get-owner'])]
     private ?string $email = null;
 
     #[ORM\OneToMany(targetEntity: BlogPost::class, mappedBy: "author")]
-    //#[Groups(['read', 'write'])]
     private $posts;
 
     #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: "author")]
-    //#[Groups(['read', 'write'])]
     private $comments;
+
+    #[ORM\Column(type: 'simple_array', length: '255')]
+    #[Groups(['get-admin', 'get-owner'])]
+    private $roles;
+
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private $passwordChangeDate;
 
     public function __construct()
     {
         $this->posts = new ArrayCollection();
         $this->comments = new ArrayCollection();
+        $this->roles = self::DEFAULT_ROLES;
     }
 
     public function getId(): ?int
@@ -166,7 +225,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     public function getRoles(): array
     {
-        return ['ROLE_USER'];
+        return $this->roles;
+    }
+
+    public function setRoles(array $roles): static
+    {
+        $this->roles = $roles;
+
+        return $this;
     }
 
     public function getUserIdentifier(): string
@@ -178,15 +244,62 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
     }
 
-//    public function getRetypedPassword()
-//    {
-//        return $this->retypedPassword;
-//    }
-//
-//    public function setRetypedPassword($retypedPassword): self
-//    {
-//        $this->retypedPassword = $retypedPassword;
-//        return $this;
-//    }
+    public function getNewPassword()
+    {
+        return $this->newPassword;
+    }
+
+    public function setNewPassword($newPassword): self
+    {
+        $this->newPassword = $newPassword;
+        return $this;
+    }
+
+    public function getNewRetypedPassword(): ?string
+    {
+        return $this->newRetypedPassword;
+    }
+
+    public function setNewRetypedPassword($newRetypedPassword): self
+    {
+        $this->newRetypedPassword = $newRetypedPassword;
+        return $this;
+    }
+
+    public function getOldPassword(): ?string
+    {
+        return $this->oldPassword;
+    }
+
+    public function setOldPassword($oldPassword): self
+    {
+        $this->oldPassword = $oldPassword;
+        return $this;
+    }
+
+    public function getRetypedPassword(): ?string
+    {
+        return $this->retypedPassword;
+    }
+
+    public
+    function setRetypedPassword($retypedPassword): self
+    {
+        $this->retypedPassword = $retypedPassword;
+        return $this;
+    }
+
+    public function getPasswordChangeDate()
+    {
+        return $this->passwordChangeDate;
+    }
+
+    public function setPasswordChangeDate($passwordChangeDate): self
+    {
+        $this->passwordChangeDate = $passwordChangeDate;
+        return $this;
+    }
+
+
 
 }
