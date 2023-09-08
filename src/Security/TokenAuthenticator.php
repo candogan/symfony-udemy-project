@@ -13,6 +13,7 @@ class TokenAuthenticator extends JWTAuthenticator
     {
         return parent::loadUser($payload, $identity);
 
+        /** @todo: if you want to delete the token you have to implement the functionality here */
         var_dump($payload);
         die;
     }

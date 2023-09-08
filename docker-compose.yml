@@ -54,3 +54,9 @@ services:
     networks:
       - default
       - c24
+
+  mailer:
+    image: schickling/mailcatcher
+    ports:
+      - '100:1020'
+      - '101:1080'

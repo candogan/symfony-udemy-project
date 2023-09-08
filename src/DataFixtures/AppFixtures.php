@@ -5,6 +5,7 @@ namespace App\DataFixtures;
 use App\Entity\BlogPost;
 use App\Entity\Comment;
 use App\Entity\User;
+use App\Security\TokenGenerator;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
 use Faker\Factory;
@@ -21,7 +22,8 @@ class AppFixtures extends Fixture
             'email' => 'admin@blog.de',
             'name' => 'Can Dogan',
             'password' => 'Localsecretpassword123',
-            'roles' => [User::ROLE_SUPERADMIN]
+            'roles' => [User::ROLE_SUPERADMIN],
+            'enabled' => true,
         ],
         [
             'username' => 'admin',
@@ -29,6 +31,7 @@ class AppFixtures extends Fixture
             'name' => 'John Doe',
             'password' => 'Localsecretpassword123',
             'roles' => [User::ROLE_ADMIN],
+            'enabled' => true,
         ],
         [
             'username' => 'writer1',
@@ -36,6 +39,7 @@ class AppFixtures extends Fixture
             'name' => 'Robb Stark',
             'password' => 'Localsecretpassword123',
             'roles' => [User::ROLE_WRITER],
+            'enabled' => true,
         ],
         [
             'username' => 'writer2',
@@ -43,6 +47,7 @@ class AppFixtures extends Fixture
             'name' => 'Tywin Lennister',
             'password' => 'Localsecretpassword123',
             'roles' => [User::ROLE_WRITER],
+            'enabled' => false,
         ],
         [
             'username' => 'editor',
@@ -50,6 +55,7 @@ class AppFixtures extends Fixture
             'name' => 'Eddard Stark',
             'password' => 'Localsecretpassword123',
             'roles' => [User::ROLE_EDITOR],
+            'enabled' => true,
         ],
         [
             'username' => 'commentator',
@@ -57,11 +63,13 @@ class AppFixtures extends Fixture
             'name' => 'Jeimi Lennister',
             'password' => 'Localsecretpassword123',
             'roles' => [User::ROLE_COMMENTATOR],
+            'enabled' => true,
         ],
     ];
 
     public function __construct(
         private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly TokenGenerator $tokenGenerator
     )
     {
         require_once 'vendor/autoload.php';
@@ -127,7 +135,14 @@ class AppFixtures extends Fixture
                     $user,
                     $userfixture['password']
                 ))
-                ->setRoles($userfixture['roles']);
+                ->setRoles($userfixture['roles'])
+                ->setEnabled($userfixture['enabled']);
+
+            if ($userfixture['enabled'] === false) {
+                $user->setConfirmationToken(
+                    $this->tokenGenerator->getRandomSecureToken()
+                );
+            }
 
             $this->addReference('user_' . $userfixture['username'], $user);
 
