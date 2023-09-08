@@ -2,11 +2,17 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
+use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Doctrine\Orm\Filter\RangeFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Serializer\Filter\PropertyFilter;
 use App\Repository\BlogPostRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -16,6 +22,48 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: BlogPostRepository::class)]
+#[ApiFilter(
+    SearchFilter::class,
+    properties: [
+        'id' => 'exact',
+        'title' => 'ipartial', // if upper case than only 'partial'. If lower case than use 'ipartial'
+        'content' => 'ipartial',
+        'author' => 'exact', // Complicated properties will also work
+        'author.name' => 'partial'
+    ]
+)]
+// the lower api filter allows: https://udemy.local.bank.c24/api/blog_posts?published[after]=2023-08-01&published[before]=2023-09-01
+#[ApiFilter(
+    DateFilter::class,
+    properties: [
+        'published'
+    ]
+)]
+#[ApiFilter(
+    RangeFilter::class,
+    properties: [
+        'id'
+    ]
+)]
+#[ApiFilter(
+    OrderFilter::class,
+    properties: [
+        'id',
+        'published',
+        'title'
+    ],
+    arguments: [
+        'orderParameterName' => '_order' // way to specify how you would like to let users order your collections
+    ]
+)]
+#[ApiFilter(
+    PropertyFilter::class,
+    arguments: [
+        'parameterName' => 'properties',
+        'overrideDefaultProperties' => false,
+        'whitelist' => ['id', 'author', 'slug', 'title', 'content']
+    ]
+)]
 #[ApiResource(
     operations: [
         new Get(normalizationContext: ['groups' => ['bpwithauthor']]),
