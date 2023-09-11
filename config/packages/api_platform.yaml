@@ -1,0 +1,10 @@
+api_platform:
+  collection:
+    # for further information Abschnitt 16
+    pagination:
+      page_parameter_name: _page
+  #      client_enabled: true
+  #      enable_parameter_name: pagination
+  exception_to_status:
+    App\Exception\EmptyBodyException: 400
+    App\Exception\InvalidConfirmationTokenException: 404

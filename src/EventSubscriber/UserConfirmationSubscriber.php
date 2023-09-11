@@ -5,20 +5,22 @@ namespace App\EventSubscriber;
 
 use ApiPlatform\Symfony\EventListener\EventPriorities;
 use App\Entity\UserConfirmation;
+use App\Exception\InvalidConfirmationTokenException;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ViewEvent;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 
 class UserConfirmationSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private readonly UserRepository $userRepository,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly LoggerInterface $logger
     )
     {
     }
@@ -41,6 +43,7 @@ class UserConfirmationSubscriber implements EventSubscriberInterface
         /** @var UserConfirmation $confirmationToken */
         $confirmationToken = $event->getControllerResult();
 
+        $this->logger->debug('Fetching user by confirmation token');
         $user = $this->userRepository->findOneBy(
             [
                 'confirmationToken' => $confirmationToken->confirmationToken
@@ -48,7 +51,8 @@ class UserConfirmationSubscriber implements EventSubscriberInterface
         );
 
         if ($user === null) {
-            throw new NotFoundHttpException();
+            $this->logger->debug('User by confirmation token not found');
+            throw new InvalidConfirmationTokenException();
         }
 
         $user->setEnabled(true);
@@ -56,6 +60,8 @@ class UserConfirmationSubscriber implements EventSubscriberInterface
         $this->entityManager->flush();
 
         $event->setResponse(new JsonResponse(null, Response::HTTP_OK));
+
+        $this->logger->debug('Confirmed user by confirmation token');
     }
 
 }

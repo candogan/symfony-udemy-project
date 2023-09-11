@@ -42,12 +42,13 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: [
                 'groups' => ['put-reset-password']
             ],
+            
         )
     ],
 )]
 #[UniqueEntity(['username'])]
 #[UniqueEntity(['email'])]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, DataForEmptyBodyValidationInterface
 {
     public const ROLE_COMMENTATOR = 'ROLE_COMMENTATOR';
     public const ROLE_WRITER = 'ROLE_WRITER';
@@ -329,4 +330,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->confirmationToken = $confirmationToken;
         return $this;
     }
+
+    public function getEmptyBodyData(): array
+    {
+        return [
+            'email' => $this->email,
+            'username' => $this->username,
+            'name' => $this->name
+        ];
+    }
+
+
 }

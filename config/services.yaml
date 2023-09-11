@@ -39,3 +39,7 @@ services:
   app.custom_authenticator:
     class: App\Security\TokenAuthenticator
     parent: lexik_jwt_authentication.security.jwt_authenticator
+
+  App\EventSubscriber\UserConfirmationSubscriber:
+    arguments:
+      $logger: '@monolog.logger.token_confirmation'

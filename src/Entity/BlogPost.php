@@ -72,7 +72,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
         new Post(security: "is_granted('ROLE_WRITER')")
     ]
 )]
-class BlogPost implements AuthoredEntityInterface, PublishedDateEntityInterface
+class BlogPost implements AuthoredEntityInterface, PublishedDateEntityInterface, DataForEmptyBodyValidationInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -187,5 +187,15 @@ class BlogPost implements AuthoredEntityInterface, PublishedDateEntityInterface
 
         return $this;
     }
+
+    public function getEmptyBodyData(): array
+    {
+        return [
+            'title' => $this->title,
+            'content' => $this->content,
+            'slug' => $this->slug
+        ];
+    }
+
 
 }

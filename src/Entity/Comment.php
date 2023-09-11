@@ -2,8 +2,6 @@
 
 namespace App\Entity;
 
-use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
-use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
@@ -42,9 +40,12 @@ use Symfony\Component\Serializer\Annotation\Groups;
             ],
         )
     ],
-    order: ['published' => 'DESC']
+    order: ['published' => 'DESC'],
+//    paginationEnabled: false,
+//    paginationClientEnabled: true,
+//    paginationMaximumItemsPerPage: 4
 )]
-class Comment implements AuthoredEntityInterface, PublishedDateEntityInterface
+class Comment implements AuthoredEntityInterface, PublishedDateEntityInterface, DataForEmptyBodyValidationInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -124,6 +125,13 @@ class Comment implements AuthoredEntityInterface, PublishedDateEntityInterface
         $this->author = $author;
 
         return $this;
+    }
+
+    public function getEmptyBodyData(): array
+    {
+        return [
+            'content' => $this->content,
+        ];
     }
 
 
